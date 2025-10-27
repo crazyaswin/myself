@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en" style="scroll-behavior: smooth;">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Often Mad</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- Libraries (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r161/three.min.js"></script>
+
+    <style>
+        :root{
+            --bg: #030308;
+            --panel: rgba(255,255,255,0.04);
+            --muted: #aeb4c0;
+            --accent-start: #ffb84e;
+            --accent-end: #ff8800;
+            --accent: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+            --glass-border: rgba(255,255,255,0.06);
+            --radius: 18px;
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+            margin:0;
+            /* Deeper, more atmospheric background */
+            background: radial-gradient(1200px 800px at 10% 10%, #0d1e3d 0%, transparent 20%), var(--bg);
+            color:#eef2f7;
+            font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            overflow-x:hidden;
+        }
+
+        /* Canvas background */
+        canvas#bg3d{
+            position:fixed;
+            inset:0;
+            width:100%;
+            height:100%;
+            z-index:-2;
+            display:block;
+        }
+        /* Subtle vignette and overlay for richness */
+        .bg-overlay{
+            position:fixed; inset:0; z-index:-1; pointer-events:none;
+            background:
+                radial-gradient(1000px 400px at 80% 10%, rgba(255,160,50,0.04), transparent 8%),
+                linear-gradient(180deg, rgba(10,12,20,0.25), rgba(3,3,8,0.7));
+        }
+
+        /* NAV */
+        header.nav{
+            position:sticky; top:12px; z-index:40;
+            display:flex; align-items:center; justify-content:space-between;
+            max-width:1200px; margin:0 auto; padding:16px 20px;
+            backdrop-filter: blur(14px) saturate(1.2);
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
+            border:1px solid var(--glass-border);
+            border-radius:30px;
+            margin-top:18px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+        }
+        .brand{display:flex; gap:.9rem; align-items:center}
+        .brand-logo{
+            width:48px; height:48px; border-radius:14px;
+            background:var(--accent);
+            display:grid; place-items:center; color:#111; font-weight:800; font-size:1.8rem;
+            box-shadow: 0 8px 20px rgba(255,150,50,0.2), inset 0 -6px 14px rgba(255,255,255,0.08);
+        }
+        nav.links{display:flex; gap:8px; align-items:center}
+        nav.links a{
+            color:var(--muted); text-decoration:none; font-weight:600; padding:10px 14px; border-radius:16px;
+            position:relative; transition:color .2s ease, background .2s ease;
+        }
+        nav.links a:hover{ color:#fff; background: rgba(255,255,255,0.04); }
+        /* Active link indicator */
+        nav.links a.active{
+            color:#fff;
+        }
+        nav.links a.active::after{
+            content:''; position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+            width:6px; height:6px; border-radius:50%;
+            background:var(--accent-start);
+            box-shadow: 0 0 10px 1px var(--accent-start);
+        }
+
+        .cta{
+            padding:10px 18px; border-radius:14px; font-weight:700;
+            background:var(--accent); color:#111; border:none; cursor:pointer; box-shadow: 0 10px 30px rgba(255,160,60,0.2);
+            margin-left:10px;
+        }
+        
+        /* Mobile Menu Toggle */
+        #mobileMenuToggle{
+            display:none; /* Hidden by default on desktop */
+            background:transparent; border:none; color:#fff; cursor:pointer;
+        }
+
+        /* Mobile Menu Overlay */
+        .mobile-menu-overlay{
+            position:fixed; inset:0; z-index:50;
+            background:var(--bg); backdrop-filter:blur(8px);
+            display:flex; flex-direction:column; justify-content:center; align-items:center;
+            transform:translateX(100%); transition:transform 0.3s ease-in-out;
+            opacity:0; pointer-events:none;
+        }
+        .mobile-menu-overlay.open{
+            transform:translateX(0); opacity:1; pointer-events:auto;
+        }
+        .mobile-menu-overlay .menu-close{
+            position:absolute; top:24px; right:24px; background:transparent; border:none; color:#fff; cursor:pointer;
+        }
+        .mobile-menu-overlay nav a{
+            font-size:2rem; padding:16px; font-weight:700; color:#fff; text-decoration:none;
+            transition:color 0.2s ease;
+        }
+        .mobile-menu-overlay nav a:hover{ color:var(--accent-start); }
+
+
+        /* cursor */
+        #cursor{
+            position:fixed; width:22px; height:22px; border-radius:50%;
+            background:var(--accent-start); opacity:0.8;
+            transform:translate(-50%,-50%) scale(.75);
+            z-index:9999; pointer-events:none; mix-blend-mode: soft-light; transition:transform .15s ease, opacity .15s;
+            box-shadow: 0 0 15px var(--accent-end);
+        }
+        @media (pointer:coarse){ #cursor{display:none} }
+
+        /* HERO */
+        .hero{
+            min-height:86vh; display:grid; place-items:center; text-align:center; padding:36px 20px;
+            max-width:1200px; margin:36px auto;
+        }
+        .hero .kicker{display:inline-block; padding:8px 16px; border-radius:999px; background:rgba(255,255,255,0.04); color:var(--accent-start); font-weight:700; margin-bottom:18px; text-transform:uppercase; letter-spacing:1px; font-size:.85rem}
+        .hero h1{
+            font-size:clamp(2.5rem,5.5vw,5rem); line-height:1.05; margin:0; letter-spacing:-1.5px; font-weight:800;
+            /* Premium gradient text effect */
+            background: linear-gradient(180deg, #ffffff 60%, var(--accent-start) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 4px 20px rgba(255,160,60,0.15);
+        }
+        .hero p{color:var(--muted); max-width:70ch; margin:20px auto 0; font-size:1.1rem; font-weight:400}
+        .hero .actions{display:flex; gap:16px; justify-content:center; margin-top:30px; flex-wrap:wrap}
+        .btn{
+            border-radius:14px; padding:14px 24px; font-weight:700; border:1px solid rgba(255,255,255,0.04);
+            background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            color:#fff; cursor:pointer; transition: transform .2s ease, box-shadow .2s;
+            display:inline-flex; align-items:center; gap:8px;
+        }
+        .btn.primary{
+            background:var(--accent); color:#0b0b12; border-color: transparent;
+            box-shadow: 0 18px 45px -5px rgba(255,150,50,0.25);
+        }
+        .btn:hover{ transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.4) }
+        .btn.primary:hover{ box-shadow: 0 20px 50px -5px rgba(255,150,50,0.4) }
+
+        /* marquee loop behind hero content */
+        .marquee-wrap{
+            position:absolute; left:0; right:0; top:60%; pointer-events:none; overflow:hidden; z-index:-1;
+            opacity:0.04;
+        }
+        .marquee{
+            display:inline-block; white-space:nowrap; font-weight:800; font-size:5.5rem; letter-spacing:8px;
+            transform:translateX(0); color:#fff;
+            will-change:transform;
+        }
+
+        /* SECTIONS */
+        section.panel{ padding:96px 20px; max-width:1200px; margin:0 auto; }
+        .section-header{ text-align:center; margin-bottom:50px }
+        .section-header h2{ margin:0; font-size:clamp(1.5rem, 3vw, 2.5rem); letter-spacing:-0.5px; font-weight:800 }
+        .section-header p{ color:var(--muted); margin-top:10px; font-size:1.1rem }
+
+        .grid{ display:grid; grid-template-columns: repeat(12,1fr); gap:24px; align-items:stretch }
+        .card{
+            grid-column: span 4;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            border:1px solid var(--glass-border); border-radius:24px; padding:28px;
+            box-shadow: 0 10px 40px rgba(2,6,23,0.7);
+            transition: transform .25s cubic-bezier(.2,.9,.2,1), box-shadow .25s ease, border-color .25s ease;
+            position:relative;
+            overflow:hidden;
+        }
+        .card::before{
+            content:''; position:absolute; inset:0; z-index:0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,180,78,0.2), transparent 70%);
+            opacity:0; transition:opacity .3s ease;
+        }
+        .card:hover::before{ opacity:1; }
+        .card:hover{
+            transform: translateY(-12px);
+            box-shadow: 0 25px 70px rgba(3,8,32,0.95);
+            border-color: rgba(255,180,78,0.4);
+        }
+        .card h3{ margin:0 0 10px 0; font-size:1.25rem; letter-spacing:-0.2px; font-weight:700 }
+        .card p{ color:var(--muted); margin:0; font-size:.95rem; line-height:1.6 }
+
+        /* Skills badges */
+        .badge-grid{
+            display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:30px;
+        }
+        .skill-badge{
+            background:rgba(255,255,255,0.06); color:#fff; padding:10px 20px; border-radius:12px;
+            font-size:0.9rem; font-weight:600;
+            display:inline-flex; align-items:center; gap:8px;
+            border:1px solid rgba(255,255,255,0.1);
+            transition:background 0.2s;
+        }
+        .skill-badge:hover{
+            background:rgba(255,255,255,0.12);
+        }
+        .skill-badge .icon{ color:var(--accent-start); }
+
+        /* AI box */
+        .ai-wrap{ max-width:900px; margin:0 auto; }
+        .ai-input-group{ display:flex; gap:16px; align-items:center; padding:12px; border-radius:18px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.02); box-shadow: 0 6px 20px rgba(0,0,0,0.5) }
+        .ai-input{ flex:1; padding:10px 14px; border-radius:12px; border:none; background:transparent; color:inherit; font-size:1rem; outline:none; }
+        .ai-input::placeholder{ color:var(--muted) }
+        .ai-output{
+            margin-top:24px;color:#fff;line-height:1.7;padding:24px;border-radius:18px;
+            border:1px solid rgba(255,180,78,0.2);background:rgba(255,255,255,0.01);
+            min-height:100px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-size:1rem;
+        }
+        .ai-output strong{ color:var(--accent-start) }
+        #aiLoader{ display:none; margin-top:10px; color:var(--accent-start); font-style:italic }
+
+        /* Insights/Posts */
+        .post-card{
+            grid-column: span 4;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            border:1px solid var(--glass-border); border-radius:20px; padding:24px;
+        }
+        .post-card h4{ margin:0 0 8px 0; font-size:1.1rem; }
+        .post-card .meta{ font-size:0.85rem; color:var(--accent-start); font-weight:600; margin-bottom:12px; display:block; }
+        .post-card p{ color:var(--muted); font-size:0.9rem; line-height:1.5; }
+
+
+        /* Contact Form */
+        .contact-form-wrap{ max-width:820px;margin:24px auto; }
+        .contact-form input, .contact-form textarea{
+            padding:14px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.3); color:inherit;
+            transition:border-color .2s ease, background .2s ease;
+        }
+        .contact-form input:focus, .contact-form textarea:focus{
+            border-color: var(--accent-start); background:rgba(0,0,0,0.5); outline:none;
+        }
+
+
+        footer{ padding:40px 20px; text-align:center; color:var(--muted); border-top:1px solid rgba(255,255,255,0.02); margin-top:60px; }
+
+        /* reveal utility */
+        .reveal{ opacity:0; transform: translateY(16px); transition: all .8s cubic-bezier(.2,.9,.2,1) }
+        .reveal.visible{ opacity:1; transform:none }
+
+        /* responsive */
+        @media (max-width:980px){
+            .grid{ gap:18px; }
+            .card, .post-card{ grid-column: span 6; }
+            .marquee{ font-size:3rem }
+            .hero h1{ letter-spacing:-1px; }
+            nav.links{ display:none; } /* Hide desktop nav */
+            #mobileMenuToggle{ display:block; } /* Show mobile toggle */
+        }
+        @media (max-width:640px){
+            .card, .post-card{ grid-column: span 12 }
+            header.nav{ padding:12px; margin:10px; border-radius:20px; }
+            .brand-logo{ width:40px; height:40px; font-size:1.5rem; }
+            .hero h1{ font-size:2rem; letter-spacing:-0.5px; }
+            .hero .actions{ gap:10px; }
+            .btn{ padding:12px 20px; }
+            .marquee{ display:none }
+            .contact-form > div{ grid-template-columns: 1fr; }
+            .section-header{ margin-bottom:30px; }
+            .section-header h2{ font-size:1.8rem; }
+            .mobile-menu-overlay nav a{ font-size:1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileMenu" class="mobile-menu-overlay" aria-hidden="true">
+        <button id="mobileMenuClose" class="menu-close">
+            <script>document.write(lucide.icons.x.toSvg({ class: 'w-8 h-8' }))</script>
+        </button>
+        <nav class="links mobile-links">
+            <a href="#home" data-section="home" onclick="closeMobileMenu()">Home</a>
+            <a href="#work" data-section="work" onclick="closeMobileMenu()">Work</a>
+            <a href="#training" data-section="training" onclick="closeMobileMenu()">Training</a>
+            <a href="#skills" data-section="skills" onclick="closeMobileMenu()">Skills</a>
+            <a href="#ai" data-section="ai" onclick="closeMobileMenu()">AI Studio</a>
+            <a href="#contact" data-section="contact" class="cta" style="margin-top:20px;" onclick="closeMobileMenu()">Work with me</a>
+        </nav>
+    </div>
+
+    <!-- Background canvas + overlay -->
+    <canvas id="bg3d" aria-hidden="true"></canvas>
+    <div class="bg-overlay" aria-hidden="true"></div>
+
+    <!-- custom cursor -->
+    <div id="cursor" aria-hidden="true"></div>
+
+    <!-- sticky nav -->
+    <header class="nav" role="banner" aria-label="Main navigation">
+        <div class="brand">
+            <div class="brand-logo" aria-hidden="true">MO</div>
+            <div style="line-height:1">
+                <div style="font-weight:800; font-size:1.2rem;">Often</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">Design • Systems • Code</div>
+            </div>
+        </div>
+
+        <nav class="links desktop-links" role="navigation" aria-label="Primary links">
+            <a href="#home" data-section="home" class="active">Home</a>
+            <a href="#work" data-section="work">Work</a>
+            <a href="#training" data-section="projects">Training</a>
+            <a href="#skills" data-section="skills">Skills</a>
+            <a href="#ai" data-section="ai">AI Studio</a>
+            <a href="#contact" class="cta">Work with Me</a>
+        </nav>
+        
+        <button id="mobileMenuToggle" aria-label="Toggle navigation menu">
+            <script>document.write(lucide.icons.menu.toSvg({ class: 'w-8 h-8' }))</script>
+        </button>
+    </header>
+
+    <!-- HERO -->
+    <main>
+        <section class="hero" id="home" data-section="home" role="region" aria-label="Hero">
+            <div class="kicker reveal">Learn • Life • Love</div>
+            <h1 class="reveal">Empowering the Future by Building Minds and Creating Technology Where Logic Meets Innovation</h1>
+            <p class="reveal">I build production systems, delightful UI, and performance-first 3D interactions. Let’s design something timeless.</p>
+
+            <div class="actions reveal" style="margin-top:30px">
+                <button class="btn primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">
+                    <script>document.write(lucide.icons.rocket.toSvg({ class: 'w-5 h-5' }))</script> Start a Project
+                </button>
+                <a class="btn" href="img/Aswin_VS_Resume.docx" target="_blank" rel="noopener" view>
+                    <script>document.write(lucide.icons.layers.toSvg({ class: 'w-5 h-5' }))</script> View Resume
+                </a>
+            </div>
+
+            <!-- marquee loop behind -->
+            <div class="marquee-wrap" aria-hidden="true">
+                <div id="marquee" class="marquee">From Concept to Code — Crafted with Clarity --</div>
+            </div>
+        </section>
+
+        <!-- WORK -->
+        <section class="panel" id="work" data-section="work" role="region" aria-label="Work & featured">
+    <div class="section-header reveal">
+        <h2>Production Work</h2>
+        <p>Training systems, student engagement platforms, and scalable learning tools for academic institutions.</p>
+    </div>
+
+    <div class="grid" style="margin-top:22px">
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.bookOpen.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> EduTrain Suite</h3>
+            <p>Modular training platform with integrated coding challenges, project-based learning paths, and real-time feedback for C, Java, Python, DSA, and Cloud Technologies.</p>
+        </article>
+
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.users.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> MentorConnect</h3>
+            <p>Mentorship and evaluation system designed to support over 10,000+ students with mock interviews, performance tracking, and personalized learning analytics.</p>
+        </article>
+
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.video.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> LiveCode Arena</h3>
+            <p>Interactive webinar and workshop platform enabling live coding sessions, technical bootcamps, and hands-on programming events across multiple colleges.</p>
+        </article>
+    </div>
+</section>
+
+        <!-- PROJECTS -->
+        <section class="panel" id="training" data-section="training" role="region" aria-label="Training Expertise">
+    <div class="section-header reveal">
+        <h2>Training Expertise</h2>
+        <p>Empowering learners through hands-on programming, problem solving, and project development.</p>
+    </div>
+
+    <div class="grid" style="margin-top:22px">
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.code.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> Programming Languages</h3>
+            <p>Comprehensive training in C, Java, and Python with a focus on syntax, logic, and application development.</p>
+        </article>
+
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.layers.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> Core Concepts</h3>
+            <p>In-depth coverage of Data Structures, Algorithms, Web Development, and Cloud Basics for technical proficiency.</p>
+        </article>
+
+        <article class="card reveal">
+            <h3><script>document.write(lucide.icons.book-open.toSvg({ class: 'w-5 h-5 inline-block mr-2' }))</script> Workshop Topics</h3>
+            <p>Interactive sessions on Full Stack Development Essentials, Cloud Awareness, and Coding for Placements.</p>
+        </article>
+    </div>
+</section>
+
+ <section class="panel" id="training-field" data-section="training-field" role="region" aria-label="Training Field">
+  <div class="section-header reveal">
+    <h2>Training Field</h2>
+    <p>Snapshots from workshops, bootcamps, and hands-on sessions conducted across Tamil Nadu.</p>
+  </div>
+
+  <div class="grid" id="trainingGrid" style="margin-top:22px; gap:20px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"></div>
+</section>
+
+<script>
+  const images = [
+    { src: "img/img4.jpg", title: "DSA Live Coding Training" },
+    { src: "img/img5.jpg", title: "DSA Bootcamp Session" },
+   
+  ];
+
+  const grid = document.getElementById("trainingGrid");
+
+  images.forEach(img => {
+    const card = document.createElement("article");
+    card.className = "card reveal";
+    card.innerHTML = `
+      <img src="${img.src}" alt="${img.title}" style="width:100%; height:auto; border-radius:8px;">
+      <h4 style="margin-top:10px;">${img.title}</h4>
+    `;
+    grid.appendChild(card);
+  });
+</script>
+
+        
+        <!-- SKILLS & EXPERTISE (NEW SECTION) -->
+        <section class="panel" id="skills" data-section="skills" role="region" aria-label="Skills and Expertise">
+            <div class="section-header reveal">
+                <h2>Skills & Core Expertise</h2>
+                <p>A curated list of core proficiencies and technologies used in production systems.</p>
+            </div>
+
+            <div class="badge-grid reveal">
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.layout-grid.toSvg({ class: 'w-4 h-4 icon' }))</script> Design Analysis & Algorithms
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.zap.toSvg({ class: 'w-4 h-4 icon' }))</script> Data Structure & Algorithms
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.code.toSvg({ class: 'w-4 h-4 icon' }))</script> React
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.globe.toSvg({ class: 'w-4 h-4 icon' }))</script> C Advance
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.server.toSvg({ class: 'w-4 h-4 icon' }))</script> C++
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.database.toSvg({ class: 'w-4 h-4 icon' }))</script> Python
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.palette.toSvg({ class: 'w-4 h-4 icon' }))</script> UI/UX Design
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.bot.toSvg({ class: 'w-4 h-4 icon' }))</script> AI Integration (LLMs)
+                </span>
+                <span class="skill-badge">
+                    <script>document.write(lucide.icons.git-commit.toSvg({ class: 'w-4 h-4 icon' }))</script> Java / Python
+                </span>
+            </div>
+        </section>
+
+
+        <!-- AI Assistant demo -->
+        <section class="panel" id="ai" data-section="ai" role="region" aria-label="AI assistant">
+            <div class="section-header reveal">
+                <h2>AI Studio: Architecture & Strategy</h2>
+                <p>Tap into a strategic partner for instant project analysis and architectural blueprints.</p>
+            </div>
+
+            <div class="ai-wrap reveal">
+                <div class="ai-input-group">
+                    <input id="aiInput" class="ai-input" placeholder="Describe your project, e.g. 'scale a real-time chat for 100k users'">
+                    <button id="aiAsk" class="btn primary">
+                        <script>document.write(lucide.icons.sparkles.toSvg({ class: 'w-5 h-5' }))</script> Ask AI
+                    </button>
+                </div>
+                <div id="aiLoader">... Thinking ...</div>
+                <div id="aiOutput" class="ai-output">
+                    <p style="color:var(--muted)">Your architectural guidance will appear here after asking the AI. Try describing a complex technical challenge!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- INSIGHTS (NEW SECTION) -->
+        <section class="panel" id="trending-news" data-section="news">
+  <div class="section-header reveal">
+    <h2>Trending Tech News</h2>
+    <p>Stay updated with the latest happenings in technology, refreshed in real-time.</p>
+  </div>
+
+  <div class="news-cards reveal" id="news-cards" style="display: flex; gap: 20px; flex-wrap: wrap;">
+    <!-- News items will be injected here -->
+  </div>
+</section>
+
+<script>
+  const newsContainer = document.getElementById('news-cards');
+
+  async function fetchTrendingNews() {
+    const apiKey = "80f14deae0b8478e920212206bb96505"; // Replace with your NewsAPI key
+    const url = `https://newsapi.org/v2/top-headlines?category=technology&language=en&pageSize=3&apiKey=${apiKey}`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const data = await response.json();
+      newsContainer.innerHTML = ''; // Clear any previous news
+
+      if (data.articles.length === 0) {
+        newsContainer.innerHTML = '<p style="color: #fff;">No trending news available right now.</p>';
+        return;
+      }
+
+      data.articles.forEach(article => {
+        const card = document.createElement('div');
+        card.style.background = '#0b1220';
+        card.style.borderRadius = '12px';
+        card.style.padding = '20px';
+        card.style.flex = '1';
+        card.style.minWidth = '300px';
+        card.style.color = '#fff';
+        card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+
+        card.innerHTML = `
+          <p style="color: orange; font-weight: 600; margin-bottom: 8px;">
+            ${article.source.name} • ${new Date(article.publishedAt).toLocaleDateString()}
+          </p>
+          <h3 style="margin-bottom: 10px;">${article.title}</h3>
+          <p style="color: #94a3b8;">${article.description || ''}</p>
+          <a href="${article.url}" target="_blank" style="color: #7c3aed; text-decoration: none; font-weight: 600;">
+            Read More →
+          </a>
+        `;
+        newsContainer.appendChild(card);
+      });
+    } catch (error) {
+      newsContainer.innerHTML = '<p style="color: red;">Failed to load news. Please try again later.</p>';
+      console.error('Error fetching news:', error);
+    }
+  }
+
+  fetchTrendingNews();
+</script>
+
+    <!-- Contact -->
+    <section class="panel" id="contact" data-section="contact" role="region" aria-label="Contact">
+        <div class="section-header reveal">
+        <h2>Let's build something extraordinary</h2>
+        <p>Available for selective engagements & collaborations. Send a short brief below.</p>
+        </div>
+
+        <form class="contact-form-wrap reveal contact-form" action="https://formspree.io/f/xwpwewje" method="POST" style="display:grid;gap:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <form class="contact-form-wrap reveal contact-form" action="https://formspree.io/f/xwpwewje" method="POST" style="display:grid;gap:16px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <input name="name" required placeholder="Your name" title="Please enter your name">
+                    <input name="email" type="email" required placeholder="Email address" title="Please enter a valid email address">
+                </div>
+                <textarea name="message" rows="6" required placeholder="Brief project description (goals, scope, desired timeline)" title="Please describe your project"></textarea>
+                <div style="display:flex;gap:16px;align-items:center;justify-content:flex-start;flex-wrap:wrap">
+                    <button class="btn primary" type="submit">
+                        <script>document.write(lucide.icons.mail.toSvg({ class: 'w-5 h-5' }))</script> Send brief
+                    </button>
+                    <div style="color:var(--muted); font-size:1rem;">Or email: <a href="mailto:madoften0@example.com" style="color:var(--accent-start);font-weight:700; text-decoration:none;">madoften1@example.com</a></div>
+                </div>
+            </form>
+        </section>
+
+        <footer style="background:#0b0f1d;color:#e2e8f0;font-family:'Poppins',sans-serif;width:100%;border-top:1px solid rgba(255,255,255,0.1);overflow:hidden;">
+  <div style="max-width:1200px;margin:auto;padding:50px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:40px;overflow:hidden;">
+    
+    <!-- Navigation -->
+    <div>
+      <h3 style="color:#facc15;margin-bottom:16px;font-size:1.1rem;">NAVIGATION</h3>
+      <p><a href="#home" style="color:#cbd5e1;text-decoration:none;">Home</a></p>
+      <p><a href="#work" style="color:#cbd5e1;text-decoration:none;">Work</a></p>
+      <p><a href="#training" style="color:#cbd5e1;text-decoration:none;">Training</a></p>
+      <p><a href="#skills" style="color:#cbd5e1;text-decoration:none;">Skills</a></p>
+      <p><a href="#ai" style="color:#cbd5e1;text-decoration:none;">AI Studio</a></p>
+      <p><a href="#contact" style="color:#cbd5e1;text-decoration:none;">Contact</a></p>
+    </div>
+
+    <!-- About + Social -->
+    <div>
+      <h3 style="color:#facc15;margin-bottom:16px;font-size:1.1rem;">ABOUT</h3>
+      <p style="color:#cbd5e1;">Mod Often is a creative tech initiative focused on innovation, AI, and high-performance web solutions.</p>
+      <p style="color:#94a3b8;font-size:0.9rem;margin-top:10px;">Empowering developers to <strong>build, innovate, and inspire.</strong></p>
+      <div style="display:flex;gap:15px;margin-top:16px;">
+        <a href="https://facebook.com" target="_blank" title="Facebook" style="color:#3b82f6;font-size:1.3rem;transition:transform 0.3s;"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://instagram.com" target="_blank" title="Instagram" style="color:#ec4899;font-size:1.3rem;transition:transform 0.3s;"><i class="fab fa-instagram"></i></a>
+        <a href="https://linkedin.com" target="_blank" title="LinkedIn" style="color:#0ea5e9;font-size:1.3rem;transition:transform 0.3s;"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://github.com" target="_blank" title="GitHub" style="color:#f8fafc;font-size:1.3rem;transition:transform 0.3s;"><i class="fab fa-github"></i></a>
+        <a href="https://youtube.com" target="_blank" title="YouTube" style="color:#ef4444;font-size:1.3rem;transition:transform 0.3s;"><i class="fab fa-youtube"></i></a>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div>
+      <h3 style="color:#facc15;margin-bottom:16px;font-size:1.1rem;">CONTACT</h3>
+      <p style="color:#cbd5e1;">📍 Chennai, Tamil Nadu</p>
+      <p style="color:#cbd5e1;">✉️ modoften@gmail.com</p>
+      <p style="color:#cbd5e1;">📞 +91 94971 98030</p>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div style="background:#090c17;padding:18px 20px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);width:100%;">
+    <div style="max-width:1200px;margin:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1055/1055646.png" alt="Mod Often" style="width:22px;height:22px;">
+        <span style="font-weight:600;">Mod Often</span>
+      </div>
+      <div style="font-size:0.9rem;opacity:0.7;">© <span id="year"></span> Mod Often — All Rights Reserved</div>
+      <div style="font-size:0.85rem;opacity:0.6;">Made with 💡 in India</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<!-- Font Awesome (include in <head> if not already) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<style>
+  footer a:hover i {
+    transform: scale(1.2);
+    opacity: 0.85;
+  }
+</style>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<!-- Font Awesome (include in <head> if not already) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<style>
+  footer a:hover i {
+    transform: scale(1.2);
+    opacity: 0.85;
+  }
+</style>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<!-- Font Awesome for icons -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+<!-- JS for year and animation -->
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<!-- Subtle animation -->
+<style>
+@keyframes fadeUp {
+  from {opacity: 0; transform: translateY(20px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+footer a:hover {
+  color: #facc15;
+  transition: color 0.3s ease;
+}
+</style>
+
+
+    </main>
+
+    <script>
+        // --- API Integration Setup ---
+        const apiKey = "AIzaSyAZADfQ__JWg5Aik37LAPGYWgZd08DOZUQ"; // Leave as-is, Canvas will provide key at runtime
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        /**
+         * Converts a base64 string to a Uint8Array for API calls.
+         * Note: Not strictly needed for text generation, but a utility for future-proofing.
+         */
+        function base64ToUint8Array(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        /**
+         * Retries a fetch request using exponential backoff.
+         */
+        async function fetchWithRetry(url, options, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status === 429 && i < retries - 1) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        // Year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Custom cursor
+        const cursor = document.getElementById('cursor');
+        const cursorObserver = {x:0, y:0, tX:0, tY:0, lerp:0.15};
+        let isCursorActive = false;
+
+        function updateCursorPosition() {
+            if (isCursorActive) {
+                // Lerp (smooth transition) the cursor to the target position
+                cursorObserver.tX += (cursorObserver.x - cursorObserver.tX) * cursorObserver.lerp;
+                cursorObserver.tY += (cursorObserver.y - cursorObserver.tY) * cursorObserver.lerp;
+                cursor.style.left = cursorObserver.tX + 'px';
+                cursor.style.top = cursorObserver.tY + 'px';
+                requestAnimationFrame(updateCursorPosition);
+            }
+        }
+
+        window.addEventListener('pointermove', e => {
+            cursorObserver.x = e.clientX;
+            cursorObserver.y = e.clientY;
+            if (!isCursorActive) {
+                isCursorActive = true;
+                updateCursorPosition();
+            }
+        }, {passive:true});
+
+        // Hover scale on interactive elements + Card mouse-over for glow
+        document.querySelectorAll('a, button, input, textarea, .card').forEach(el=>{
+            if(el.classList.contains('card')){
+                el.addEventListener('pointermove', (e)=>{
+                    const rect = el.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    el.style.setProperty('--mouse-x', `${x}px`);
+                    el.style.setProperty('--mouse-y', `${y}px`);
+                });
+            }
+
+            el.addEventListener('pointerenter', ()=> cursor.style.transform = 'translate(-50%,-50%) scale(1.8)');
+            el.addEventListener('pointerleave', ()=> cursor.style.transform = 'translate(-50%,-50%) scale(.75)');
+        });
+
+        // --- Mobile Menu Logic ---
+        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+        function openMobileMenu() {
+            mobileMenu.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            gsap.fromTo(".mobile-links a", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "power2.out" });
+        }
+
+        function closeMobileMenu() {
+            mobileMenu.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        mobileMenuToggle.addEventListener('click', openMobileMenu);
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+        document.querySelectorAll('.mobile-links a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
+        
+        // Section Active Link Observer (Next Level UX)
+        const navLinks = document.querySelectorAll('nav.links a[data-section]');
+        const sections = document.querySelectorAll('main section[data-section]');
+
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const navLink = document.querySelector(`a[data-section="${entry.target.id}"]`);
+                if (!navLink) return;
+
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.2) {
+                    navLinks.forEach(link => link.classList.remove('active'));
+                    navLink.classList.add('active');
+                } else if (!entry.isIntersecting && navLink.classList.contains('active')) {
+                    // Fallback logic for when the element leaves the viewport.
+                    // Keep the last active one active until a new one intersects.
+                }
+            });
+        }, { threshold: 0.2, rootMargin: '-10% 0% -10% 0%' }); // Added rootMargin for better centering
+
+        sections.forEach(section => sectionObserver.observe(section));
+
+
+        // Reveal on scroll using IntersectionObserver + GSAP subtle
+        const reveals = document.querySelectorAll('.reveal');
+        const io = new IntersectionObserver((entries)=>{
+            entries.forEach(e=>{
+                if(e.isIntersecting){
+                    gsap.fromTo(e.target, {y: 16, opacity:0}, {y:0, opacity:1, duration:1.1, ease: "power4.out"});
+                    io.unobserve(e.target);
+                }
+            })
+        }, {threshold: 0.15});
+        reveals.forEach(el => io.observe(el));
+
+
+        // Marquee loop: continuous translation (pauses on hover)
+        (function marqueeLoop(){
+            const m = document.getElementById('marquee');
+            if(!m) return;
+            // The content is tripled in the HTML, so we use the computed width of the original segment.
+            // A more accurate way is to calculate the width of the initial string: 'DESIGN — ENGINEERING — PERFORMANCE — 3D — AI — SCALABILITY — '
+            // We rely on the width calculation based on 1/3 of the total content width.
+            let width = m.scrollWidth / 3; 
+            // If the innerHTML hasn't been tripled yet (in case of re-runs), do it now for safe measure.
+            if (m.innerHTML.split(' — ').length < 10) { 
+                m.innerHTML = m.innerHTML + m.innerHTML + m.innerHTML;
+            }
+
+            let pos = 0;
+            const speed = 0.55; // px per frame
+            let raf;
+            function tick(){
+                pos -= speed;
+                if(Math.abs(pos) >= width) pos = 0;
+                m.style.transform = `translateX(${pos}px)`;
+                raf = requestAnimationFrame(tick);
+            }
+            tick();
+            m.parentElement.addEventListener('pointerenter', ()=> cancelAnimationFrame(raf));
+            m.parentElement.addEventListener('pointerleave', ()=> tick());
+            window.addEventListener('resize', ()=> {
+                // Recalculate width on resize
+                width = m.scrollWidth / 3;
+            });
+        })();
+
+
+        // LLM AI Assistant Integration (Real API structure)
+        const aiInput = document.getElementById('aiInput');
+        const aiAsk = document.getElementById('aiAsk');
+        const aiOutput = document.getElementById('aiOutput');
+        const aiLoader = document.getElementById('aiLoader');
+
+        async function aiReply(){
+            const q = (aiInput.value || '').trim();
+            if(!q){ aiOutput.innerHTML = '<p style="color:var(--accent-end)">Please describe your project or problem briefly.</p>'; return; }
+
+            aiOutput.textContent = '';
+            aiLoader.style.display = 'block';
+            aiAsk.disabled = true;
+
+            const systemPrompt = "You are 'Sir', a world-class system architect and principal engineer. Provide a concise, high-level technical strategy based on the user's project description. Structure your response into 3-5 key points using bold titles. Use a confident, professional, and refined tone.";
+
+            const payload = {
+                contents: [{ parts: [{ text: q }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }], // Use search grounding for up-to-date info
+            };
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            };
+
+            try {
+                const response = await fetchWithRetry(apiUrl, options);
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    let text = candidate.content.parts[0].text;
+                    // Simple citation extraction (optional, but good practice)
+                    let sourcesHtml = '';
+                    const groundingMetadata = candidate.groundingMetadata;
+                    if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                        const sources = groundingMetadata.groundingAttributions
+                            .map(attr => ({ uri: attr.web?.uri, title: attr.web?.title }))
+                            .filter(source => source.uri && source.title)
+                            .slice(0, 3); // Limit to 3 sources
+
+                        if(sources.length > 0){
+                            sourcesHtml = '<div style="margin-top:20px; font-size:0.85rem; color:var(--muted)">Sources: ';
+                            sourcesHtml += sources.map(s => `<a href="${s.uri}" target="_blank" style="color:var(--accent-end); text-decoration:none;">${s.title.substring(0, 30)}...</a>`).join(' | ');
+                            sourcesHtml += '</div>';
+                        }
+                    }
+
+                    // Replace markdown elements for bolding with HTML for styling
+                    text = text.replaceAll('**', '<strong>');
+
+                    aiOutput.innerHTML = text + sourcesHtml;
+
+                } else {
+                    aiOutput.innerHTML = '<p style="color:red">Error: Could not retrieve a strategic analysis. The API response was malformed or empty.</p>';
+                }
+            } catch (err) {
+                console.error('AI API Error:', err);
+                aiOutput.innerHTML = '<p style="color:red">Error: Failed to connect to the AI model. Check the network or try again later.</p>';
+            } finally {
+                aiLoader.style.display = 'none';
+                aiAsk.disabled = false;
+            }
+        }
+
+        aiAsk.addEventListener('click', aiReply);
+        aiInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); aiReply(); } });
+
+
+        // Three.js background (polished low-cost geometry + shader)
+        (function threeBG(){
+            const canvas = document.getElementById('bg3d');
+            let renderer, scene, camera, mesh;
+
+            try {
+                // Initialization
+                renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 200);
+                camera.position.set(0,0,18);
+
+                // Material definition
+                const mat = new THREE.ShaderMaterial({
+                    transparent: true,
+                    uniforms: {
+                        uTime: { value:0 },
+                        uColorA: { value: new THREE.Color(0x3ad4ff) }, // Blue
+                        uColorB: { value: new THREE.Color(0xffb84e) }, // Accent Orange
+                        uOpacity: { value: 0.85 }
+                    },
+                    vertexShader: `
+                        uniform float uTime;
+                        varying vec3 vPos;
+                        void main(){
+                            // Subtle noise deformation
+                            vPos = position + normal * (sin(uTime*0.9 + position.y*0.8) * 0.25);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(vPos,1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float uTime;
+                        uniform vec3 uColorA;
+                        uniform vec3 uColorB;
+                        uniform float uOpacity;
+                        varying vec3 vPos;
+                        void main(){
+                            // Gradient based on vertex position & time
+                            float f = 0.5 + 0.5 * sin(uTime*1.1 + vPos.x*1.6 + vPos.y*1.1);
+                            vec3 col = mix(uColorA, uColorB, f);
+                            // Add slight Fresnel effect
+                            float fresnel = pow(1.0 - dot(normalize(vPos), vec3(0.0, 0.0, 1.0)), 2.0);
+                            col = mix(col, vec3(1.0), fresnel * 0.2); // White highlight on edges
+                            gl_FragColor = vec4(col, uOpacity);
+                        }
+                    `
+                });
+
+                // Mesh creation
+                const geo = new THREE.IcosahedronGeometry(5.2, 6);
+                mesh = new THREE.Mesh(geo, mat);
+                scene.add(mesh);
+
+                // Lighting
+                const L1 = new THREE.PointLight(0xffffff, 1.2); L1.position.set(10,10,20); scene.add(L1);
+                const L2 = new THREE.PointLight(0xffb84e, 0.7); L2.position.set(-8,-6,12); scene.add(L2);
+                scene.add(new THREE.AmbientLight(0x404040, 0.4));
+
+                const clock = new THREE.Clock();
+                let mouseX = 0, mouseY = 0;
+                let targetRotationX = 0, targetRotationY = 0;
+
+                // Mouse/Pointer for subtle rotation control
+                document.addEventListener('pointermove', (e) => {
+                    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+                    targetRotationX = mouseY * 0.05;
+                    targetRotationY = mouseX * 0.05;
+                });
+
+                function render(){
+                    const t = clock.getElapsedTime();
+                    mesh.material.uniforms.uTime.value = t;
+
+                    // Smoothly follow mouse
+                    mesh.rotation.y += (targetRotationY - mesh.rotation.y) * 0.02;
+                    mesh.rotation.x += (targetRotationX - mesh.rotation.x) * 0.02;
+
+                    // Slow continuous rotation
+                    mesh.rotation.y += 0.002;
+
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(render);
+                }
+                render();
+
+                window.addEventListener('resize', ()=> {
+                    camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            } catch (err) {
+                // Fallback for browsers without good WebGL support
+                console.warn('WebGL fallback activated:', err);
+                if(canvas && canvas.remove) canvas.remove();
+                const overlay = document.querySelector('.bg-overlay');
+                if(overlay) overlay.style.background = 'linear-gradient(180deg,#081022,#040409)';
+            }
+        })();
+
+
+        // Respect reduced-motion
+        if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+            document.querySelectorAll('.reveal').forEach(el => el.classList.remove('reveal')); // Remove GSAP dependency
+            // Stop marquee by hiding
+            const m = document.getElementById('marquee'); if(m) m.style.display = 'none';
+            // Stop 3D rendering (handled in the try/catch, but good to ensure)
+        }
+    </script>
+</body>
+</html>
